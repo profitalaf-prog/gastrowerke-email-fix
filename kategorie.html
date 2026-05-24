@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Alle Produkte der gastrowerke GmbH – Gastrotechnik, Edelstahlmöbel, Kühlung. Jetzt filtern und bestellen.">
+<title>Produkte – gastrowerke</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* Kategoriespezifische Styles */
+.filter-sidebar{background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);padding:24px;position:sticky;top:calc(var(--header-h) + 20px)}
+.filter-title{font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.filter-group{margin-bottom:20px}
+.filter-group-label{font-weight:600;margin-bottom:8px;font-size:0.85rem}
+.filter-options label{display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-bottom:6px;cursor:pointer}
+.filter-options input[type="checkbox"]{accent-color:var(--accent);width:16px;height:16px}
+.filter-price-row{display:flex;gap:8px;margin:8px 0}
+.filter-price-input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit}
+.btn-filter-apply{width:100%;background:var(--accent);color:white;padding:10px;border-radius:40px;font-weight:600;margin-top:8px}
+.btn-filter-reset{width:100%;background:transparent;border:1px solid var(--border);padding:9px;border-radius:40px;margin-top:6px}
+.sort-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.result-count{font-size:0.85rem;color:var(--text-muted)}
+.sort-select{padding:8px 16px;border:1px solid var(--border);border-radius:40px;background:var(--white)}
+.view-btns{display:flex;gap:4px}
+.view-btn{padding:8px 12px;border:1px solid var(--border);background:var(--white);border-radius:var(--radius-sm);cursor:pointer}
+.view-btn.active{background:var(--accent);color:white;border-color:var(--accent)}
+.pagination{display:flex;justify-content:center;gap:8px;margin-top:40px}
+.page-btn{width:40px;height:40px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--white);cursor:pointer}
+.page-btn.active{background:var(--accent);color:white;border-color:var(--accent)}
+@media(max-width:992px){.cat-layout{grid-template-columns:1fr}.filter-sidebar{position:static}}
+</style>
+</head>
+<body>
+<div id="gw-header-root"></div>
+
+<div class="page-hero">
+  <div class="container">
+    <nav class="breadcrumb"><a href="index.html">Start</a><span>›</span><span id="bc-cat">Alle Produkte</span></nav>
+    <h1 class="page-hero-title" id="cat-page-title">Alle <em>Produkte</em></h1>
+    <p class="page-hero-sub" id="cat-page-sub">Professionelle Ausstattung für Gastronomie, Hotellerie und Großküchen.</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="cat-layout" style="display:grid;grid-template-columns:280px 1fr;gap:32px;padding:32px 0 64px">
+    <aside>
+      <div class="filter-sidebar">
+        <div class="filter-title">Filter</div>
+        <div class="filter-group"><div class="filter-group-label">Kategorie</div><div class="filter-options" id="catFilterOptions"></div></div>
+        <div class="filter-group"><div class="filter-group-label">Preis</div><div class="filter-price-row"><input type="number" class="filter-price-input" id="priceMin" placeholder="Min. €"><span>–</span><input type="number" class="filter-price-input" id="priceMax" placeholder="Max. €"></div></div>
+        <div class="filter-group"><div class="filter-group-label">Besonderheiten</div><div class="filter-options"><label><input type="checkbox" id="filterSale"> Nur Sale-Artikel</label><label><input type="checkbox" id="filterNew"> Nur Neuheiten</label><label><input type="checkbox" id="filterTop"> Nur Bestseller</label></div></div>
+        <button class="btn-filter-apply" onclick="applyFilters()">Filter anwenden</button>
+        <button class="btn-filter-reset" onclick="resetFilters()">Zurücksetzen</button>
+      </div>
+    </aside>
+    <main>
+      <div class="sort-bar"><div class="result-count" id="resultCount"></div><div><select class="sort-select" id="sortSelect" onchange="applyFilters()"><option value="default">Standard</option><option value="price-asc">Preis aufsteigend</option><option value="price-desc">Preis absteigend</option><option value="rating">Bewertung</option><option value="name">Name A-Z</option></select></div></div>
+      <div class="product-grid" id="product-grid"></div>
+      <div class="pagination" id="pagination"></div>
+    </main>
+  </div>
+</div>
+
+<div id="gw-footer-root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script src="layout.js"></script>
+<script src="pages-common.js"></script>
+<script>
+let allProducts=[], currentPage=1, pageSize=12;
+const params=new URLSearchParams(location.search);
+document.addEventListener('DOMContentLoaded',async()=>{
+  allProducts=window._gwProducts||await (async()=>{const r=await fetch('products.json');return r.json();})();
+  window._gwProducts=allProducts;
+  const cats=[...new Set(allProducts.map(p=>p.category))];
+  document.getElementById('catFilterOptions').innerHTML=cats.map(c=>`<label><input type="checkbox" class="cat-cb" value="${c}"> ${c}</label>`).join('');
+  if(params.get('sale')==='true') document.getElementById('filterSale').checked=true;
+  if(params.get('new')==='true') document.getElementById('filterNew').checked=true;
+  if(params.get('cat')){ const cat=params.get('cat'); document.querySelectorAll('.cat-cb').forEach(cb=>{if(cb.value===cat)cb.checked=true;}); document.getElementById('bc-cat').innerHTML=cat; document.getElementById('cat-page-title').innerHTML=cat+' <em>Produkte</em>';}
+  if(params.get('q')){ const q=params.get('q'); document.getElementById('cat-page-title').innerHTML='Suche: <em>'+q+'</em>';}
+  applyFilters();
+});
+function getFilteredProducts(){
+  const cats=Array.from(document.querySelectorAll('.cat-cb:checked')).map(c=>c.value);
+  const pMin=parseFloat(document.getElementById('priceMin').value)||0;
+  const pMax=parseFloat(document.getElementById('priceMax').value)||Infinity;
+  const sale=document.getElementById('filterSale').checked;
+  const nw=document.getElementById('filterNew').checked;
+  const top=document.getElementById('filterTop').checked;
+  const q=params.get('q')||'';
+  return allProducts.filter(p=>{
+    if(cats.length>0 && !cats.includes(p.category)) return false;
+    if(p.price!=null && (p.price<pMin||p.price>pMax)) return false;
+    if(sale && !p.sale) return false;
+    if(nw && !p.new) return false;
+    if(top && !p.topSeller) return false;
+    if(q){const ql=q.toLowerCase(); if(!p.name.toLowerCase().includes(ql)&&!p.category.toLowerCase().includes(ql)&&!(p.shortName&&p.shortName.toLowerCase().includes(ql)))return false;}
+    return true;
+  });
+}
+function sortProducts(list){
+  const s=document.getElementById('sortSelect').value;
+  return [...list].sort((a,b)=>{if(s==='price-asc') return a.price-b.price; if(s==='price-desc') return b.price-a.price; if(s==='rating') return b.rating-a.rating; if(s==='name') return a.name.localeCompare(b.name,'de'); return 0;});
+}
+function applyFilters(){
+  const filtered=sortProducts(getFilteredProducts());
+  renderGrid(filtered);
+}
+function resetFilters(){
+  document.querySelectorAll('.cat-cb').forEach(cb=>cb.checked=false);
+  document.getElementById('priceMin').value='';document.getElementById('priceMax').value='';
+  document.getElementById('filterSale').checked=false;document.getElementById('filterNew').checked=false;document.getElementById('filterTop').checked=false;
+  document.getElementById('sortSelect').value='default';
+  applyFilters();
+}
+function renderGrid(products){
+  const grid=document.getElementById('product-grid');
+  const rc=document.getElementById('resultCount');
+  const pgn=document.getElementById('pagination');
+  rc.textContent=products.length+' Produkte';
+  const fmt=p=>p.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  function stars(r){let s='';const f=Math.floor(r);for(let i=0;i<f;i++) s+='★';if(r-f>=0.5)s+='½';while((s.replace(/½/g,'').length+(s.includes('½')?1:0))<5)s+='☆';return s;}
+  const wl=JSON.parse(localStorage.getItem('gw_wishlist')||'[]');
+  const total=Math.ceil(products.length/pageSize);
+  if(currentPage>total)currentPage=1;
+  const slice=products.slice((currentPage-1)*pageSize,currentPage*pageSize);
+  grid.innerHTML=slice.map(p=>{
+    const bCls={sale:'badge-sale',new:'badge-new',hot:'badge-hot',top:'badge-top'}[p.badge]||'';
+    const bHtml=p.badge?`<div class="product-badges"><span class="badge ${bCls}">${p.badgeLabel}</span></div>`:'';
+    const priceHtml=p.oldPrice?`<div><span class="product-price">${fmt(p.price)}</span><span class="product-price-old">${fmt(p.oldPrice)}</span></div>`:`<span class="product-price">${fmt(p.price)}</span>`;
+    const wished=wl.includes(p.id);
+    return `<article class="product-card reveal">
+      <a href="produkt.html?slug=${p.slug}"><div class="product-img-wrap"><img src="${p.image||'snowflake.svg'}" alt="${p.name}" onerror="this.src='snowflake.svg'">${bHtml}<button class="product-wishlist${wished?' wished':''}" onclick="event.preventDefault();toggleWishById(${p.id},this)">${wished?'Merken ✓':'Merken'}</button></div></a>
+      <div class="product-body"><div class="product-category">${p.category}</div><a href="produkt.html?slug=${p.slug}" class="product-name">${p.name}</a><div class="product-stars">${stars(p.rating)} <span>(${p.reviews})</span></div><div class="product-meta">${priceHtml}<button class="btn-add-cart" onclick="addToCartById(${p.id},this)">In den Warenkorb</button></div></div></article>`;
+  }).join('');
+  pgn.innerHTML=Array.from({length:total},(_,i)=>`<button class="page-btn${currentPage===i+1?' active':''}" onclick="gotoPage(${i+1})">${i+1}</button>`).join('');
+  initReveal();
+}
+function gotoPage(n){currentPage=n;applyFilters();window.scrollTo({top:0,behavior:'smooth'});}
+</script>
+</body>
+</html>

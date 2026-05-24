@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Sicherer Checkout – gastrowerke. Adresse, Zahlung, Bestellung abschließen.">
+<title>Kasse – gastrowerke</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.checkout-layout{display:grid;grid-template-columns:1fr 380px;gap:32px;padding:32px 0 80px}
+.co-panel{background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);margin-bottom:20px;overflow:hidden}
+.co-panel-head{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);cursor:pointer}
+.co-panel-title{font-weight:700}
+.co-panel-body{padding:24px}
+.co-panel.collapsed .co-panel-body{display:none}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-row-3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px}
+.same-addr-check{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.payment-options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.payment-opt{border:2px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.payment-opt.selected{border-color:var(--accent);background:var(--accent-pale)}
+.btn-buy{background:var(--accent);color:white;width:100%;padding:16px;border-radius:40px;font-weight:700;margin-top:16px}
+.co-summary-box{background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);padding:24px;position:sticky;top:calc(var(--header-h) + 20px)}
+.co-summary-item{display:flex;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border-light)}
+.co-sum-img{width:60px;height:60px;border-radius:var(--radius);overflow:hidden;background:var(--bg-alt)}
+.co-totals{margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
+.co-total-row{display:flex;justify-content:space-between;padding:6px 0}
+.co-total-row.grand{font-weight:800;font-size:1.2rem;border-top:1px solid var(--border);margin-top:8px;padding-top:12px}
+.co-success{display:none;text-align:center;padding:80px 20px;max-width:600px;margin:0 auto}
+@media(max-width:900px){.checkout-layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="gw-header-root"></div>
+
+<div class="page-hero">
+  <div class="container">
+    <nav class="breadcrumb"><a href="index.html">Start</a><span>›</span><span>Kasse</span></nav>
+    <h1 class="page-hero-title">Bestellung <em>abschließen</em></h1>
+  </div>
+</div>
+
+<div class="container">
+  <div id="coEmpty" class="co-empty" style="display:none;text-align:center;padding:80px 20px">
+    <h2>Ihr Warenkorb ist leer</h2>
+    <a href="kategorie.html" class="btn-primary" style="margin-top:20px">Jetzt einkaufen</a>
+  </div>
+
+  <div class="checkout-layout" id="coForm">
+    <div>
+      <!-- Rechnungsadresse -->
+      <div class="co-panel" id="panelBilling">
+        <div class="co-panel-head" onclick="togglePanel('panelBilling')">
+          <span class="co-panel-title">Rechnungsadresse</span>
+          <span class="co-panel-toggle">▼</span>
+        </div>
+        <div class="co-panel-body">
+          <div class="form-row-2">
+            <div class="form-group"><label>Vorname <span class="req">*</span></label><input type="text" id="bFirstname" class="form-control"></div>
+            <div class="form-group"><label>Nachname <span class="req">*</span></label><input type="text" id="bLastname" class="form-control"></div>
+          </div>
+          <div class="form-group"><label>Firma</label><input type="text" id="bCompany" class="form-control"></div>
+          <div class="form-row-2">
+            <div class="form-group"><label>Telefon <span class="req">*</span></label><input type="tel" id="bPhone" class="form-control"></div>
+            <div class="form-group"><label>E-Mail <span class="req">*</span></label><input type="email" id="bEmail" class="form-control"></div>
+          </div>
+          <div class="form-group"><label>Straße & Hausnummer <span class="req">*</span></label><input type="text" id="bStreet" class="form-control"></div>
+          <div class="form-row-3">
+            <div class="form-group"><label>PLZ <span class="req">*</span></label><input type="text" id="bZip" class="form-control"></div>
+            <div class="form-group"><label>Stadt <span class="req">*</span></label><input type="text" id="bCity" class="form-control"></div>
+            <div class="form-group"><label>Land</label><select id="bCountry"><option value="DE">Deutschland</option><option value="AT">Österreich</option><option value="CH">Schweiz</option></select></div>
+          </div>
+        </div>
+      </div>
+      <!-- Lieferadresse -->
+      <div class="co-panel" id="panelShipping">
+        <div class="co-panel-head" onclick="togglePanel('panelShipping')">
+          <span class="co-panel-title">Lieferadresse</span>
+          <span class="co-panel-toggle">▼</span>
+        </div>
+        <div class="co-panel-body">
+          <div class="same-addr-check"><input type="checkbox" id="sameAddress" checked onchange="toggleShippingAddr(this)"> <label>Lieferadresse ist identisch mit Rechnungsadresse</label></div>
+          <div id="shippingAddrFields" style="display:none">
+            <div class="form-row-2">
+              <div class="form-group"><label>Vorname</label><input type="text" id="sFirstname" class="form-control"></div>
+              <div class="form-group"><label>Nachname</label><input type="text" id="sLastname" class="form-control"></div>
+            </div>
+            <div class="form-group"><label>Straße</label><input type="text" id="sStreet" class="form-control"></div>
+            <div class="form-row-2">
+              <div class="form-group"><label>PLZ</label><input type="text" id="sZip" class="form-control"></div>
+              <div class="form-group"><label>Stadt</label><input type="text" id="sCity" class="form-control"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Zahlung -->
+      <div class="co-panel" id="panelPayment">
+        <div class="co-panel-head" onclick="togglePanel('panelPayment')">
+          <span class="co-panel-title">Zahlungsart</span>
+          <span class="co-panel-toggle">▼</span>
+        </div>
+        <div class="co-panel-body">
+          <div class="payment-options">
+            <div class="payment-opt selected" onclick="selectPayment('paypal',this)"><span>💳</span> <span>PayPal</span></div>
+            <div class="payment-opt" onclick="selectPayment('invoice',this)"><span>📄</span> <span>Kauf auf Rechnung</span></div>
+          </div>
+          <div id="paypal-button-container" style="min-height:48px;background:var(--bg-alt);border-radius:var(--radius);padding:20px;text-align:center">PayPal-Button wird hier eingebunden</div>
+        </div>
+      </div>
+      <!-- AGB -->
+      <div class="co-panel" id="panelTerms">
+        <div class="co-panel-head" onclick="togglePanel('panelTerms')">
+          <span class="co-panel-title">Bestätigung</span>
+          <span class="co-panel-toggle">▼</span>
+        </div>
+        <div class="co-panel-body">
+          <div class="form-check"><input type="checkbox" id="coTerms"> <label>Ich habe die <a href="agb.html">AGB</a> gelesen und akzeptiere sie.</label></div>
+          <div class="form-check"><input type="checkbox" id="coPrivacy"> <label>Ich habe die <a href="datenschutz.html">Datenschutzerklärung</a> zur Kenntnis genommen.</label></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="co-summary-box">
+        <h3 class="co-summary-title">Bestellübersicht</h3>
+        <div id="coSummaryItems"></div>
+        <div class="co-totals" id="coTotals"></div>
+        <button class="btn-buy" id="btnBuy" onclick="submitOrder()">Jetzt kaufen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="co-success" id="coSuccess">
+    <h2>Bestellung erfolgreich!</h2>
+    <p>Vielen Dank. Sie erhalten eine Bestätigung per E-Mail.</p>
+    <a href="index.html" class="btn-primary">Zur Startseite</a>
+  </div>
+</div>
+
+<div id="gw-footer-root"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script src="layout.js"></script>
+<script src="pages-common.js"></script>
+<script>
+const VAT=0.19, SHIP_COST=9.90, SHIP_FREE=100;
+function fmt(p){return p.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}
+function togglePanel(id){document.getElementById(id).classList.toggle('collapsed');}
+function toggleShippingAddr(cb){document.getElementById('shippingAddrFields').style.display=cb.checked?'none':'block';}
+function selectPayment(type,el){document.querySelectorAll('.payment-opt').forEach(o=>o.classList.remove('selected'));el.classList.add('selected');}
+function renderSummary(){
+  const cart=JSON.parse(localStorage.getItem('gw_cart')||'[]');
+  if(cart.length===0){document.getElementById('coForm').style.display='none';document.getElementById('coEmpty').style.display='block';return;}
+  document.getElementById('coSummaryItems').innerHTML=cart.map(item=>`<div class="co-summary-item"><div class="co-sum-img"><img src="${item.image||'snowflake.svg'}" onerror="this.src='snowflake.svg'"></div><div><div>${item.name}</div><div>Menge: ${item.qty||1}</div></div><div>${fmt(item.price*(item.qty||1))}</div></div>`).join('');
+  const subtotal=cart.reduce((s,i)=>s+i.price*(i.qty||1),0);
+  const shipping=subtotal<SHIP_FREE?SHIP_COST:0;
+  const gross=subtotal+shipping;
+  const net=gross/(1+VAT);
+  const vat=gross-net;
+  document.getElementById('coTotals').innerHTML=`
+    <div class="co-total-row"><span>Zwischensumme</span><span>${fmt(subtotal)}</span></div>
+    <div class="co-total-row"><span>Versand</span><span>${shipping===0?'Kostenlos':fmt(shipping)}</span></div>
+    <div class="co-total-row grand"><span>Gesamt</span><span>${fmt(gross)}</span></div>`;
+}
+function validateForm(){
+  let ok=true;
+  if(!document.getElementById('bFirstname').value.trim()){alert('Bitte Vorname eingeben');ok=false;}
+  if(!document.getElementById('bLastname').value.trim()){alert('Bitte Nachname eingeben');ok=false;}
+  if(!document.getElementById('bEmail').value.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)){alert('Bitte gültige E-Mail');ok=false;}
+  if(!document.getElementById('coTerms').checked){alert('Bitte AGB akzeptieren');ok=false;}
+  if(!document.getElementById('coPrivacy').checked){alert('Bitte Datenschutz akzeptieren');ok=false;}
+  return ok;
+}
+async function submitOrder(){
+  if(!validateForm())return;
+  const btn=document.getElementById('btnBuy');btn.disabled=true;btn.textContent='Wird bearbeitet...';
+  await new Promise(r=>setTimeout(r,1000));
+  const cart=JSON.parse(localStorage.getItem('gw_cart')||'[]');
+  const orderNum='GW-'+Date.now().toString().slice(-6);
+  if(window.gwAuth && window.gwAuth.saveOrderToUser) await window.gwAuth.saveOrderToUser({orderNumber:orderNum,items:cart,total:cart.reduce((s,i)=>s+i.price*(i.qty||1),0),date:new Date().toISOString()});
+  localStorage.removeItem('gw_cart');
+  updateCartBadge();
+  document.getElementById('coForm').style.display='none';
+  document.getElementById('coSuccess').style.display='block';
+}
+renderSummary();
+</script>
+</body>
+</html>

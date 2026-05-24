@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mein Konto – gastrowerke</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.konto-layout{display:grid;grid-template-columns:260px 1fr;gap:32px;padding:40px 0 80px}
+.konto-sidebar{background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);overflow:hidden}
+.konto-user-head{background:var(--primary);padding:24px;text-align:center;color:white}
+.konto-avatar{width:72px;height:72px;border-radius:50%;background:var(--accent);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:24px}
+.konto-nav-item{display:block;padding:14px 20px;border-left:3px solid transparent;transition:all var(--trans)}
+.konto-nav-item.active{background:var(--accent-pale);border-left-color:var(--accent);font-weight:600}
+.konto-panel{display:none}
+.konto-panel.active{display:block}
+.order-card{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden}
+.order-head{background:var(--bg-alt);padding:12px 16px;display:flex;justify-content:space-between}
+.addr-card{border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.addr-card.default{border-color:var(--accent);background:var(--accent-pale)}
+@media(max-width:900px){.konto-layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="gw-header-root"></div>
+
+<div class="page-hero">
+  <div class="container">
+    <nav class="breadcrumb"><a href="index.html">Start</a><span>›</span><span>Konto</span></nav>
+    <h1 class="page-hero-title">Mein <em>Konto</em></h1>
+  </div>
+</div>
+
+<div class="container">
+  <div class="konto-layout">
+    <aside class="konto-sidebar">
+      <div class="konto-user-head"><div class="konto-avatar" id="sidebarAvatar">👤</div><div id="sidebarName">Gast</div><div id="sidebarEmail"></div></div>
+      <nav>
+        <button class="konto-nav-item active" onclick="showPanel('dashboard')">Übersicht</button>
+        <button class="konto-nav-item" onclick="showPanel('orders')">Bestellungen</button>
+        <button class="konto-nav-item" onclick="showPanel('addresses')">Adressen</button>
+        <button class="konto-nav-item" onclick="showPanel('profile')">Profil</button>
+        <button class="konto-nav-item" onclick="doLogout()">Abmelden</button>
+      </nav>
+    </aside>
+    <div>
+      <div id="panel-guest" class="konto-panel" style="text-align:center;padding:80px 20px"><h2>Bitte anmelden</h2><a href="login.html" class="btn-primary">Jetzt anmelden</a></div>
+      <div id="panel-dashboard" class="konto-panel active"><div id="dashContent">Willkommen zurück!</div></div>
+      <div id="panel-orders" class="konto-panel"><div id="ordersList"></div></div>
+      <div id="panel-addresses" class="konto-panel"><div id="addrList"></div><button onclick="showAddrForm()" class="btn-secondary">Neue Adresse</button><div id="addrForm" style="display:none;margin-top:16px">...</div></div>
+      <div id="panel-profile" class="konto-panel"><div class="form-group"><label>Name</label><input type="text" id="profileName" class="form-control"></div><div class="form-group"><label>E-Mail</label><input type="email" id="profileEmail" class="form-control"></div><button onclick="saveProfile()" class="btn-primary">Speichern</button></div>
+    </div>
+  </div>
+</div>
+
+<div id="gw-footer-root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script src="layout.js"></script>
+<script src="pages-common.js"></script>
+<script>
+let userData=null;
+async function loadUser(){const user=await window.gwAuth.getCurrentUserAsync();if(!user){document.querySelectorAll('.konto-panel').forEach(p=>p.classList.remove('active'));document.getElementById('panel-guest').classList.add('active');return;}
+userData=await window.gwAuth.getUserData();document.getElementById('sidebarName').innerText=userData.name||user.email;document.getElementById('sidebarEmail').innerText=user.email;document.getElementById('dashContent').innerHTML=`<h3>Hallo ${userData.name||'Nutzer'}!</h3><p>Ihr Konto – hier finden Sie Ihre Bestellungen und Einstellungen.</p>`;renderOrders();renderAddresses();}
+function showPanel(name){document.querySelectorAll('.konto-panel').forEach(p=>p.classList.remove('active'));document.getElementById(`panel-${name}`).classList.add('active');document.querySelectorAll('.konto-nav-item').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');}
+function renderOrders(){const orders=userData?.orders||[];document.getElementById('ordersList').innerHTML=orders.length?orders.map(o=>`<div class="order-card"><div class="order-head"><span>${o.orderNumber}</span><span>${new Date(o.date).toLocaleDateString()}</span></div><div>Gesamt: ${formatPrice(o.total)}</div></div>`).join(''):'<p>Keine Bestellungen.</p>';}
+function renderAddresses(){const addrs=userData?.addresses||[];document.getElementById('addrList').innerHTML=addrs.map((a,i)=>`<div class="addr-card ${i===0?'default':''}">${a.street}, ${a.zip} ${a.city}</div>`).join('')||'<p>Keine Adressen.</p>';}
+async function saveProfile(){const name=document.getElementById('profileName').value;const email=document.getElementById('profileEmail').value;await window.gwAuth.updateUserData({name,email});loadUser();showToast('Profil aktualisiert');}
+function doLogout(){window.gwAuth.logoutUser();}
+loadUser();
+</script>
+</body>
+</html>

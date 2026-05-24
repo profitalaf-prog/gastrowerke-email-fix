@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Produktdetails – gastrowerke</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div id="gw-header-root"></div>
+
+<main class="container" style="padding:32px 0 64px">
+  <nav class="breadcrumb" id="product-breadcrumb"><a href="index.html">Start</a><span>›</span><span>Produkt wird geladen...</span></nav>
+  <div id="product-loading" style="text-align:center;padding:80px">⏳ Produkt wird geladen...</div>
+  <div id="product-error" style="display:none;text-align:center;padding:80px"><h2>Produkt nicht gefunden</h2><a href="index.html" class="btn-primary">Zur Startseite</a></div>
+  <div id="product-page-layout" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start">
+    <!-- Gallerie -->
+    <div><div class="gallery-main" style="border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);aspect-ratio:1/1"><img id="mainImg" style="width:100%;height:100%;object-fit:cover"></div><div class="gallery-thumbs" id="gallery-thumbs" style="display:flex;gap:8px;margin-top:12px"></div></div>
+    <!-- Info -->
+    <div><div class="product-brand-tag" id="product-brand-tag" style="color:var(--accent);font-size:0.7rem;font-weight:700;text-transform:uppercase"></div><h1 id="product-title" style="font-family:'Bebas Neue';font-size:2.4rem;margin:8px 0 12px"></h1><div id="product-rating" class="product-stars" style="margin-bottom:16px"></div><div class="price-block" id="price-block" style="background:var(--bg-alt);padding:20px;border-radius:var(--radius-lg);margin-bottom:24px"></div><div id="product-variants"></div><div class="add-section" style="display:flex;gap:16px;align-items:center;margin-bottom:24px"><div class="qty-wrap" style="display:flex;border:1px solid var(--border);border-radius:40px"><button class="qty-btn" onclick="changeQtyBy(-1)">−</button><input type="number" id="qtyInput" value="1" style="width:60px;text-align:center;border:none" min="1"><button class="qty-btn" onclick="changeQtyBy(1)">+</button></div><button class="btn-cart-main" id="btn-add-main" onclick="addToCartMain()" style="flex:1;background:var(--accent);color:white;padding:12px;border-radius:40px;font-weight:600">In den Warenkorb</button><button class="btn-wish-main" id="wishBtn" onclick="toggleWishMain()" style="width:48px;height:48px;border:1px solid var(--border);border-radius:50%">Merken</button></div><div class="product-usps" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px"><div class="product-usp" style="background:var(--bg-alt);padding:8px 12px;border-radius:40px">Kostenloser Versand ab 100 €</div><div class="product-usp" style="background:var(--bg-alt);padding:8px 12px;border-radius:40px">30 Tage Rückgaberecht</div></div><div class="tabs"><div class="tab-nav" style="display:flex;gap:24px;border-bottom:2px solid var(--border);margin-bottom:20px"><button class="tab-btn active" onclick="switchTab('desc')">Beschreibung</button><button class="tab-btn" onclick="switchTab('specs')">Technische Daten</button><button class="tab-btn" onclick="switchTab('delivery')">Lieferung & Zahlung</button></div><div id="tab-desc" class="tab-panel active"></div><div id="tab-specs" class="tab-panel" style="display:none"></div><div id="tab-delivery" class="tab-panel" style="display:none"><p>Lieferzeit: 2–5 Werktage. Versandkostenfrei ab 100 €. Zahlung per PayPal, Kreditkarte oder Rechnung (gewerblich).</p></div></div></div>
+  </div>
+  <div id="related-section" style="margin-top:64px;display:none"><h2 class="section-title">Ähnliche Produkte</h2><div class="product-grid" id="related-grid"></div></div>
+</main>
+
+<div id="gw-footer-root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script src="layout.js"></script>
+<script src="pages-common.js"></script>
+<script>
+let currentProduct=null,allProducts=[];
+function formatPrice(p){return p.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}
+function starsHtml(r){let s='';const f=Math.floor(r);for(let i=0;i<f;i++)s+='★';if(r-f>=0.5)s+='½';while((s.replace(/½/g,'').length+(s.includes('½')?1:0))<5)s+='☆';return s;}
+function changeQtyBy(delta){const inp=document.getElementById('qtyInput');let v=parseInt(inp.value);v=Math.max(1,isNaN(v)?1:v+delta);inp.value=v;}
+function switchTab(id){document.querySelectorAll('.tab-panel').forEach(p=>p.style.display='none');document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+id).style.display='block';document.querySelector(`.tab-btn[onclick="switchTab('${id}')"]`).classList.add('active');}
+function toggleWishMain(){if(currentProduct)toggleWishById(currentProduct.id,document.getElementById('wishBtn'));}
+async function addToCartMain(){if(currentProduct){const qty=parseInt(document.getElementById('qtyInput').value);let cart=getCart();const ex=cart.find(i=>i.id===currentProduct.id);if(ex)ex.qty=(ex.qty||1)+qty;else cart.push({id:currentProduct.id,name:currentProduct.name,price:currentProduct.price,image:currentProduct.image,qty});saveCart(cart);showToast('"'+(currentProduct.shortName||currentProduct.name)+'" in den Warenkorb gelegt.');}}
+function loadProduct(){const slug=new URLSearchParams(location.search).get('slug');fetch('products.json').then(r=>r.json()).then(data=>{allProducts=data;const product=slug?data.find(p=>p.slug===slug):null;if(!product){document.getElementById('product-loading').style.display='none';document.getElementById('product-error').style.display='block';return;}
+currentProduct=product;document.getElementById('product-loading').style.display='none';document.getElementById('product-page-layout').style.display='grid';document.title=product.name+' – gastrowerke';document.getElementById('product-brand-tag').innerHTML=`${product.brand} · ${product.category}`;document.getElementById('product-title').innerHTML=product.name;document.getElementById('product-rating').innerHTML=`<span>${starsHtml(product.rating)}</span> <span>${product.rating} / 5 · ${product.reviews} Bewertungen</span>`;document.getElementById('mainImg').src=product.image;const priceHtml=product.oldPrice?`<span class="price-current" style="font-size:1.8rem;font-weight:700">${formatPrice(product.price)}</span><span class="price-old" style="text-decoration:line-through;margin-left:12px">${formatPrice(product.oldPrice)}</span><span class="price-save" style="background:#e63946;color:white;padding:2px 8px;border-radius:20px;margin-left:12px">-${product.discount}%</span>`:`<span class="price-current" style="font-size:1.8rem;font-weight:700">${formatPrice(product.price)}</span>`;document.getElementById('price-block').innerHTML=`<div>${priceHtml}</div><div class="price-stock" style="margin-top:8px;color:#2a9d8f">Auf Lager (${product.stock} verfügbar)</div><div class="price-tax" style="font-size:0.7rem">inkl. MwSt. zzgl. Versand</div>`;document.getElementById('tab-desc').innerHTML=`<div>${(Array.isArray(product.description)?product.description:[product.description]).map(p=>`<p>${p}</p>`).join('')}${product.features?`<ul>${product.features.map(f=>`<li>${f}</li>`).join('')}</ul>`:''}</div>`;if(product.specifications){let rows='';for(let[k,v]of Object.entries(product.specifications))rows+=`<tr><td style="padding:8px 0;font-weight:600">${k}</td><td>${v}</td></tr>`;document.getElementById('tab-specs').innerHTML=`<table>${rows}</table>`;}
+const related=allProducts.filter(p=>p.category===product.category&&p.id!==product.id).slice(0,4);if(related.length){document.getElementById('related-section').style.display='block';document.getElementById('related-grid').innerHTML=related.map(p=>`<article class="product-card"><a href="produkt.html?slug=${p.slug}"><div class="product-img-wrap"><img src="${p.image}" alt="${p.name}"></div></a><div class="product-body"><a href="produkt.html?slug=${p.slug}" class="product-name">${p.name}</a><div class="product-price">${formatPrice(p.price)}</div><button class="btn-add-cart" onclick="addToCartById(${p.id},this)">In den Warenkorb</button></div></article>`).join('');}
+const wl=getWishlist();document.getElementById('wishBtn').innerHTML=wl.includes(product.id)?'Merken ✓':'Merken';}).catch(()=>{document.getElementById('product-loading').style.display='none';document.getElementById('product-error').style.display='block';});}
+loadProduct();
+</script>
+</body>
+</html>
